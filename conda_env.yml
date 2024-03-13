@@ -1,0 +1,7 @@
+name: wifi_receiver
+dependencies:
+  - pip
+  - numpy
+  - pip: 
+    - opencv-python
+
