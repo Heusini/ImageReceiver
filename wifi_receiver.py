@@ -33,6 +33,7 @@ class ImageReceiver:
 
     def accecpt_client(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            # let's the socket to be reused
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             s.bind((self.host, self.port))
             s.listen()
@@ -42,6 +43,8 @@ class ImageReceiver:
 
 
     def start(self):
+
+        # keep the tcp listener up if the client diesconnects
         while True:
             print("Starting server...")
             print("Waiting for connection...")
@@ -74,6 +77,7 @@ class ImageReceiver:
                 channels=int.from_bytes(image_channels, byteorder="big"),
             )
 
+            # get image data as long as connection is open
             while True:
                 data = self.receive_bytes(img_info.size)
                 if not data:
