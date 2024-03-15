@@ -33,55 +33,61 @@ class ImageReceiver:
 
     def accecpt_client(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             s.bind((self.host, self.port))
             s.listen()
             connection, addr = s.accept()
             print("Connected by", addr)
             return connection
 
+
     def start(self):
-        print("Starting server...")
-        self.con = self.accecpt_client()
-        image_size = self.receive_bytes(4)
-        image_width = self.receive_bytes(4)
-        image_height = self.receive_bytes(4)
-        image_channels = self.receive_bytes(4)
-        image_datatype = int.from_bytes(self.receive_bytes(1), byteorder="big")
-        print("Received image info...")
-
-        data_type = np.uint8
-        match image_datatype:
-            case 0:
-                data_type = np.uint8
-            case 1:
-                data_type = np.uint16
-            case 2:
-                data_type = np.float32
-            case 3:
-                data_type = np.float64
-            case _:
-                data_type = np.uint8
-
-        img_info = ImageInfo(
-            size=int.from_bytes(image_size, byteorder="big"),
-            width=int.from_bytes(image_width, byteorder="big"),
-            height=int.from_bytes(image_height, byteorder="big"),
-            channels=int.from_bytes(image_channels, byteorder="big"),
-        )
-
         while True:
-            data = self.receive_bytes(img_info.size)
-            if not data:
-                print("Connection closed")
-                break
-            img = Image(
-                width=img_info.width,
-                height=img_info.height,
-                channels=img_info.channels,
-                data_type=np.dtype(data_type),
-                data=data,
+            print("Starting server...")
+            print("Waiting for connection...")
+            self.con = self.accecpt_client()
+            print("Client connected")
+            image_size = self.receive_bytes(4)
+            image_width = self.receive_bytes(4)
+            image_height = self.receive_bytes(4)
+            image_channels = self.receive_bytes(4)
+            image_datatype = int.from_bytes(self.receive_bytes(1), byteorder="big")
+            print("Received image info...")
+
+            data_type = np.uint8
+            match image_datatype:
+                case 0:
+                    data_type = np.uint8
+                case 1:
+                    data_type = np.uint16
+                case 2:
+                    data_type = np.float32
+                case 3:
+                    data_type = np.float64
+                case _:
+                    data_type = np.uint8
+
+            img_info = ImageInfo(
+                size=int.from_bytes(image_size, byteorder="big"),
+                width=int.from_bytes(image_width, byteorder="big"),
+                height=int.from_bytes(image_height, byteorder="big"),
+                channels=int.from_bytes(image_channels, byteorder="big"),
             )
-            self.queue.put(img)
+
+            while True:
+                data = self.receive_bytes(img_info.size)
+                if not data:
+                    print("Connection closed")
+                    break
+                img = Image(
+                    width=img_info.width,
+                    height=img_info.height,
+                    channels=img_info.channels,
+                    data_type=np.dtype(data_type),
+                    data=data,
+                )
+                self.queue.put(img)
+
 
     def receive_bytes(self, len_bytes):
         data = bytearray()
@@ -94,6 +100,7 @@ class ImageReceiver:
 
 
 def display_img(img_queue):
+    last_tick = time.time()
     while True:
         try:
             img_bytes = img_queue.get(False)
@@ -103,16 +110,26 @@ def display_img(img_queue):
                 (img_bytes.height, img_bytes.width, img_bytes.channels)
             )
 
+            frame_period = time.time() - last_tick
+            last_tick = time.time()
+            frame_rate = 1 / frame_period
+
+            cv2.putText(img=bayer_im, text="{:10.2f}fps".format(frame_rate), org=(20, 30),
+                                            fontFace=cv2.FONT_HERSHEY_TRIPLEX,
+                                            fontScale=1, color=(255, 0, 0), thickness=1)
+
             bgr = cv2.cvtColor(bayer_im, cv2.IMREAD_COLOR)
             cv2.imshow("image", bgr)
-            cv2.waitKey(100)
+            cv2.waitKey(1)
+
+
         except:
             # print("No new image")
-            cv2.waitKey(100)
+            cv2.waitKey(1)
 
 
 if __name__ == "__main__":
-    image_queue = Queue()
+    image_queue = Queue(maxsize=0)
     host = "127.0.0.1"  # Standard loopback interface address (localhost)
     port = 3333
 

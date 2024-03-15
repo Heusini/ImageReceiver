@@ -29,6 +29,6 @@ if __name__ == "__main__":
         s.sendall(channels.to_bytes(4, byteorder="big"))
         s.sendall(data_type.to_bytes(1, byteorder="big"))  # padding
 
-        for i in range(100):
+        for i in range(10000):
             s.sendall(images[i % 3].tobytes())
-            time.sleep(0.5)
+            # time.sleep(0.1)
