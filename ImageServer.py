@@ -25,7 +25,7 @@ class Image:
     data: bytearray
 
 
-class ImageReceiver:
+class ImageServer:
     def __init__(self, host, port, queue):
         self.host = host
         self.port = port
@@ -40,7 +40,6 @@ class ImageReceiver:
             connection, addr = s.accept()
             print("Connected by", addr)
             return connection
-
 
     def start(self):
 
@@ -92,7 +91,6 @@ class ImageReceiver:
                 )
                 self.queue.put(img)
 
-
     def receive_bytes(self, len_bytes):
         data = bytearray()
         while len(data) < len_bytes:
@@ -118,14 +116,19 @@ def display_img(img_queue):
             last_tick = time.time()
             frame_rate = 1 / frame_period
 
-            cv2.putText(img=bayer_im, text="{:10.2f}fps".format(frame_rate), org=(20, 30),
-                                            fontFace=cv2.FONT_HERSHEY_TRIPLEX,
-                                            fontScale=1, color=(255, 0, 0), thickness=1)
+            cv2.putText(
+                img=bayer_im,
+                text="{:10.2f}fps".format(frame_rate),
+                org=(20, 30),
+                fontFace=cv2.FONT_HERSHEY_TRIPLEX,
+                fontScale=1,
+                color=(255, 0, 0),
+                thickness=1,
+            )
 
             bgr = cv2.cvtColor(bayer_im, cv2.IMREAD_COLOR)
             cv2.imshow("image", bgr)
             cv2.waitKey(1)
-
 
         except:
             # print("No new image")
@@ -137,7 +140,7 @@ if __name__ == "__main__":
     host = "127.0.0.1"  # Standard loopback interface address (localhost)
     port = 3333
 
-    img_receiver = ImageReceiver(host, port, image_queue)
+    img_receiver = ImageServer(host, port, image_queue)
 
     receive_thread = threading.Thread(
         target=img_receiver.start,
